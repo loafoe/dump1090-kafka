@@ -6,13 +6,10 @@ import (
 	"log"
 	"time"
 
-	"github.com/philips-software/gautocloud-connectors/hsdp"
 	"github.com/segmentio/kafka-go"
 	"github.com/spf13/viper"
 
 	"github.com/centrifugal/centrifuge-go"
-	"github.com/cloudfoundry-community/gautocloud"
-	_ "github.com/cloudfoundry-community/gautocloud/connectors/amqp/client"
 	"github.com/dgrijalva/jwt-go"
 )
 
@@ -107,6 +104,7 @@ func main() {
 	viper.SetDefault("wss", "wss://centrifugo.cloud.pcftest.com:4443/connection/websocket")
 	viper.SetDefault("channel", "public:dump1090-sbs")
 	viper.SetDefault("hmac_secret_key", "")
+	viper.SetDefault("kafka_connect", "localhost:9202")
 
 	log.Println("Start program")
 	wsURL := viper.GetString("wss")
@@ -135,14 +133,9 @@ func main() {
 	}
 
 	// Kafka
-	var kc hsdp.KafkaCredentials
-	err = gautocloud.Inject(&kc)
+	kafkaConnect := viper.GetString("kafka_connect")
 
-	if err != nil {
-		fmt.Printf("No Kafka cluster found: %v\n", err)
-		return
-	}
-	conn, err := kafka.DialLeader(context.Background(), "tcp", fmt.Sprintf("%s:%d", kc.Hostname, kc.Port), "dump1090-sbs", 0)
+	conn, err := kafka.DialLeader(context.Background(), "tcp", kafkaConnect, "dump1090-sbs", 0)
 	if err != nil {
 		fmt.Printf("Failed to connect to Kafka: %v\n", err)
 		return
