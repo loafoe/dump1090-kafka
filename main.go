@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"encoding/json"
 	"github.com/segmentio/kafka-go"
 	"github.com/spf13/viper"
 
@@ -75,18 +76,28 @@ func (h *subEventHandler) OnUnsubscribe(sub *centrifuge.Subscription, _ centrifu
 	log.Println(fmt.Sprintf("Unsubscribed from private channel %s", sub.Channel()))
 }
 
+type SBS struct {
+	Message string
+}
+
 func (h *subEventHandler) OnPublish(sub *centrifuge.Subscription, e centrifuge.PublishEvent) {
 	log.Println(fmt.Sprintf("New message received from channel %s: %s", sub.Channel(), string(e.Data)))
+	var sbs SBS
+	err := json.Unmarshal(e.Data, &sbs)
+	if err != nil {
+		fmt.Printf("Not an SBS message: %v\n", err)
+		return
+	}
 	h.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 	h.conn.WriteMessages(
-		kafka.Message{Value: e.Data},
+		kafka.Message{Value: []byte(sbs.Message)},
 	)
 }
 
 func newClient(wsURL, hmacSecretKey string) *centrifuge.Client {
 	c := centrifuge.New(wsURL, centrifuge.DefaultConfig())
 
-	c.SetToken(connToken("forwarder", hmacSecretKey, 0))
+	c.SetToken(connToken("forwarder-kafka", hmacSecretKey, 0))
 
 	handler := &eventHandler{
 		hmacSecretKey: hmacSecretKey,
