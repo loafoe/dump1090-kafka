@@ -1,4 +1,4 @@
-module dump1090fw
+module dump1090kafka
 
 go 1.15
 
