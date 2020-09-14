@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"encoding/json"
+
 	"github.com/segmentio/kafka-go"
 	"github.com/spf13/viper"
 
@@ -81,17 +82,19 @@ type SBS struct {
 }
 
 func (h *subEventHandler) OnPublish(sub *centrifuge.Subscription, e centrifuge.PublishEvent) {
-	log.Println(fmt.Sprintf("New message received from channel %s: %s", sub.Channel(), string(e.Data)))
 	var sbs SBS
 	err := json.Unmarshal(e.Data, &sbs)
 	if err != nil {
 		fmt.Printf("Not an SBS message: %v\n", err)
 		return
 	}
-	h.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-	h.conn.WriteMessages(
+	_ = h.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+	_, err = h.conn.WriteMessages(
 		kafka.Message{Value: []byte(sbs.Message)},
 	)
+	if err != nil {
+		fmt.Printf("Error writing to Kafka: %v\n", err)
+	}
 }
 
 func newClient(wsURL, hmacSecretKey string) *centrifuge.Client {
